@@ -1,0 +1,27 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@gorhom/bottom-sheet": "^5.2.14",
+    "expo": "~57.0.1",
+    "expo-status-bar": "~57.0.0",
+    "lottie-react-native": "~7.3.8",
+    "moti": "^0.30.0",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true
+}

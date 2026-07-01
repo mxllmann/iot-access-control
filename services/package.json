@@ -1,0 +1,22 @@
+{
+  "name": "iot-access-control-services",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "api-gateway",
+    "control",
+    "logger"
+  ],
+  "scripts": {
+    "dev:gateway": "npm run dev -w api-gateway",
+    "dev:control": "npm run dev -w control",
+    "dev:logger": "npm run dev -w logger",
+    "dev": "concurrently \"npm:dev:*\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.9",
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.3"
+  }
+}

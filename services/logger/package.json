@@ -1,0 +1,20 @@
+{
+  "name": "@iot-access/logger",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts"
+  },
+  "dependencies": {
+    "@iot-access/access-log": "*",
+    "amqplib": "^0.10.8",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mongoose": "^8.14.1"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.2"
+  }
+}
