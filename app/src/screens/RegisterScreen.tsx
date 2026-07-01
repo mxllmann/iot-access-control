@@ -9,12 +9,10 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api, EnrollmentStatus } from '../api';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type EnrollmentState =
   | { phase: 'idle' }
@@ -105,7 +103,7 @@ export default function RegisterScreen() {
 
       case 'input_name':
         return (
-          <Animated.View entering={FadeInDown.duration(300)}>
+          <View>
             <Text style={styles.label}>Nome do Titular</Text>
             <TextInput
               style={styles.input}
@@ -129,12 +127,12 @@ export default function RegisterScreen() {
                 <Text style={styles.confirmText}>Aguardar Cartao</Text>
               </Pressable>
             </View>
-          </Animated.View>
+          </View>
         );
 
       case 'waiting':
         return (
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.waitingContainer}>
+          <View style={styles.waitingContainer}>
             <ActivityIndicator color="#4CAF50" size="large" />
             <Text style={styles.waitingTitle}>Aproxime o cartao do leitor</Text>
             <Text style={styles.waitingSubtitle}>
@@ -146,13 +144,13 @@ export default function RegisterScreen() {
             >
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
-          </Animated.View>
+          </View>
         );
 
       case 'done': {
         const success = enrollment.enrollment.status === 'success';
         return (
-          <Animated.View entering={FadeInDown.duration(300)} style={styles.doneContainer}>
+          <View style={styles.doneContainer}>
             <MaterialCommunityIcons
               name={success ? 'check-circle-outline' : 'alert-circle-outline'}
               size={48}
@@ -171,7 +169,7 @@ export default function RegisterScreen() {
             >
               <Text style={styles.confirmText}>Novo Cadastro</Text>
             </Pressable>
-          </Animated.View>
+          </View>
         );
       }
     }
@@ -182,13 +180,13 @@ export default function RegisterScreen() {
       <Text style={styles.title}>Cadastrar Credencial</Text>
 
       {/* Enrollment Section */}
-      <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Enrollment via Leitor</Text>
         <Text style={styles.sectionDesc}>
           Cadastre aproximando o cartao no leitor RFID
         </Text>
         {renderEnrollmentContent()}
-      </Animated.View>
+      </View>
 
       {/* Divider */}
       <View style={styles.divider}>
@@ -198,7 +196,7 @@ export default function RegisterScreen() {
       </View>
 
       {/* Manual Form */}
-      <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Cadastro Manual</Text>
 
         <Text style={styles.label}>UID do Cartao</Text>
@@ -220,19 +218,21 @@ export default function RegisterScreen() {
           placeholderTextColor="#555"
         />
 
-        <AnimatedPressable
-          entering={FadeInDown.delay(300).duration(400)}
-          style={({ pressed }: { pressed: boolean }) => [styles.button, pressed && styles.pressed]}
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.pressed, submitting && styles.buttonDisabled]}
           onPress={handleManualRegister}
           disabled={submitting}
         >
           {submitting ? (
-            <ActivityIndicator color="#0D0D0D" />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.buttonText}>Cadastrar</Text>
+            <>
+              <MaterialCommunityIcons name="card-plus-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.buttonText}>Cadastrar</Text>
+            </>
           )}
-        </AnimatedPressable>
-      </Animated.View>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -313,12 +313,16 @@ const styles = StyleSheet.create({
   dividerText: { fontSize: 13, color: '#555' },
 
   button: {
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
     marginTop: 4,
   },
+  buttonDisabled: { opacity: 0.6 },
   pressed: { opacity: 0.8 },
-  buttonText: { fontSize: 16, fontWeight: '700', color: '#0D0D0D' },
+  buttonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 });

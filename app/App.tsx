@@ -8,16 +8,16 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  SlideInRight,
-  SlideInLeft,
-  SlideOutLeft,
-  SlideOutRight,
+  withTiming,
+  runOnJS,
   Easing,
 } from 'react-native-reanimated';
 
 import CardsScreen from './src/screens/CardsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import CredentialDetailScreen from './src/screens/CredentialDetailScreen';
+import { Credential } from './src/api';
 
 type Screen = 'cards' | 'history' | 'register';
 
@@ -42,16 +42,9 @@ function TabBarItem({
   onPress: () => void;
 }) {
   const scale = useSharedValue(1);
-  const iconScale = useSharedValue(isActive ? 1.2 : 1);
-
-  iconScale.value = withSpring(isActive ? 1.2 : 1, SPRING_CONFIG);
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-  }));
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconScale.value }],
   }));
 
   return (
@@ -62,13 +55,13 @@ function TabBarItem({
       style={styles.tabItem}
     >
       <Animated.View style={[styles.tabContent, pressStyle]}>
-        <Animated.View style={[styles.iconContainer, iconStyle]}>
+        <View style={styles.iconContainer}>
           <MaterialCommunityIcons
             name={tab.icon}
-            size={24}
+            size={isActive ? 28 : 24}
             color={isActive ? '#FFFFFF' : '#666'}
           />
-        </Animated.View>
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -76,41 +69,60 @@ function TabBarItem({
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('cards');
+  const [detailCredential, setDetailCredential] = useState<Credential | null>(null);
   const prevIndexRef = useRef(0);
   const indicatorX = useSharedValue(0);
 
   const getIndex = (s: Screen) => TABS.findIndex((t) => t.key === s);
 
+  const screenOpacity = useSharedValue(1);
+  const pendingScreenRef = useRef<Screen | null>(null);
+
+  const applyNewScreen = useCallback((screen: Screen) => {
+    pendingScreenRef.current = null;
+    setCurrentScreen(screen);
+    screenOpacity.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.cubic) });
+  }, []);
+
   const handleNavigate = useCallback(
     (screen: Screen) => {
-      if (screen === currentScreen) return;
+      if (screen === currentScreen || pendingScreenRef.current) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       prevIndexRef.current = getIndex(currentScreen);
       const newIndex = getIndex(screen);
       indicatorX.value = withSpring(newIndex * TAB_WIDTH, SPRING_CONFIG);
-      setCurrentScreen(screen);
+
+      pendingScreenRef.current = screen;
+      screenOpacity.value = withTiming(0, { duration: 120, easing: Easing.in(Easing.cubic) }, () => {
+        runOnJS(applyNewScreen)(screen);
+      });
     },
-    [currentScreen],
+    [currentScreen, applyNewScreen],
   );
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
   }));
 
-  const goingRight = getIndex(currentScreen) > prevIndexRef.current;
-
-  const entering = goingRight
-    ? SlideInRight.duration(300).easing(Easing.out(Easing.cubic))
-    : SlideInLeft.duration(300).easing(Easing.out(Easing.cubic));
-
-  const exiting = goingRight
-    ? SlideOutLeft.duration(200).easing(Easing.in(Easing.cubic))
-    : SlideOutRight.duration(200).easing(Easing.in(Easing.cubic));
+  const screenAnimStyle = useAnimatedStyle(() => ({
+    opacity: screenOpacity.value,
+  }));
 
   const renderScreen = () => {
+    if (detailCredential) {
+      return (
+        <CredentialDetailScreen
+          credential={detailCredential}
+          onBack={() => setDetailCredential(null)}
+          onUpdated={(updated) => setDetailCredential(updated)}
+          onDeleted={() => setDetailCredential(null)}
+        />
+      );
+    }
+
     switch (currentScreen) {
       case 'cards':
-        return <CardsScreen />;
+        return <CardsScreen onSelectCredential={setDetailCredential} />;
       case 'history':
         return <HistoryScreen />;
       case 'register':
@@ -123,12 +135,7 @@ export default function App() {
       <StatusBar style="light" />
 
       <View style={styles.screenContainer}>
-        <Animated.View
-          key={currentScreen}
-          entering={entering}
-          exiting={exiting}
-          style={StyleSheet.absoluteFill}
-        >
+        <Animated.View style={[StyleSheet.absoluteFill, screenAnimStyle]}>
           {renderScreen()}
         </Animated.View>
       </View>
