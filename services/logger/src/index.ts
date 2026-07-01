@@ -5,7 +5,7 @@ import { startConsumer } from './messaging/consumer';
 import { logService } from './services/logService';
 import logRoutes from './routes/logRoutes';
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 6002;
 const MONGO_URI =
   process.env.LOGGER_MONGO_URI || 'mongodb://localhost:27017/iot-access-logger';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';

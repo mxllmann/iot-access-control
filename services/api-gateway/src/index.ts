@@ -3,10 +3,10 @@ import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 6000;
 
-const CONTROL_URL = process.env.CONTROL_URL || 'http://localhost:3001';
-const LOGGER_URL = process.env.LOGGER_URL || 'http://localhost:3002';
+const CONTROL_URL = process.env.CONTROL_URL || 'http://localhost:6001';
+const LOGGER_URL = process.env.LOGGER_URL || 'http://localhost:6002';
 
 app.use(cors());
 
