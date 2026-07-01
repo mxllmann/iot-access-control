@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { accessService } from '../services/accessService';
 
 const verifyAccessSchema = z.object({
-  cardUid: z.string().min(1),
+  credentialUid: z.string().min(1),
 });
 
 export const accessController = {
@@ -12,7 +12,7 @@ export const accessController = {
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
-    const result = await accessService.verifyAccess(parsed.data.cardUid);
+    const result = await accessService.verifyAccess(parsed.data.credentialUid);
     res.json(result);
   },
 };

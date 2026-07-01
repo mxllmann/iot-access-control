@@ -3,7 +3,7 @@ import { AccessLogModel, AccessEvent } from '@iot-access/access-log';
 export const logService = {
   async logAccess(event: AccessEvent) {
     return AccessLogModel.create({
-      cardUid: event.cardUid,
+      credentialUid: event.credentialUid,
       ownerName: event.ownerName,
       authorized: event.authorized,
       timestamp: new Date(event.timestamp),
@@ -11,14 +11,14 @@ export const logService = {
   },
 
   async getAll(filters?: {
-    cardUid?: string;
+    credentialUid?: string;
     startDate?: string;
     endDate?: string;
     limit?: number;
   }) {
     const query: Record<string, any> = {};
 
-    if (filters?.cardUid) query.cardUid = filters.cardUid;
+    if (filters?.credentialUid) query.credentialUid = filters.credentialUid;
 
     if (filters?.startDate || filters?.endDate) {
       query.timestamp = {};

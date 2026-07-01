@@ -1,7 +1,7 @@
 import { CredentialModel } from '@iot-access/credential';
 import { configService } from './configService';
 
-type EnrollmentStatus = 'waiting_card' | 'success' | 'error' | 'already_registered';
+type EnrollmentStatus = 'waiting_credential' | 'success' | 'error' | 'already_registered';
 
 type CredentialEnrollment = {
   enabled: boolean;
@@ -39,10 +39,10 @@ export const credentialService = {
   async startEnrollment(ownerName: string) {
     const enrollment: CredentialEnrollment = {
       enabled: true,
-      status: 'waiting_card',
+      status: 'waiting_credential',
       ownerName,
       uid: null,
-      message: 'Waiting for card read',
+      message: 'Waiting for credential read',
     };
 
     await configService.upsert(
@@ -73,7 +73,7 @@ export const credentialService = {
   async completeEnrollment(uid: string) {
     const enrollment = await credentialService.getEnrollmentStatus();
 
-    if (!enrollment.enabled || enrollment.status !== 'waiting_card') {
+    if (!enrollment.enabled || enrollment.status !== 'waiting_credential') {
       const errorEnrollment: CredentialEnrollment = {
         ...enrollment,
         enabled: false,

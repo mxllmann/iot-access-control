@@ -7,7 +7,8 @@ import configRoutes from './routes/configRoutes';
 import accessRoutes from './routes/accessRoutes';
 
 const PORT = process.env.PORT || 3001;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/iot-access-control';
+const MONGO_URI =
+  process.env.CONTROL_MONGO_URI || 'mongodb://localhost:27017/iot-access-control';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 
 async function main() {

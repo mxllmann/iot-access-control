@@ -6,7 +6,8 @@ import { logService } from './services/logService';
 import logRoutes from './routes/logRoutes';
 
 const PORT = process.env.PORT || 3002;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/iot-access-logger';
+const MONGO_URI =
+  process.env.LOGGER_MONGO_URI || 'mongodb://localhost:27017/iot-access-logger';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 
 async function main() {
@@ -16,7 +17,7 @@ async function main() {
   await startConsumer(RABBITMQ_URL, async (event) => {
     await logService.logAccess(event);
     console.log(
-      `Access logged: ${event.cardUid} - ${event.authorized ? 'AUTHORIZED' : 'DENIED'}`
+      `Access logged: ${event.credentialUid} - ${event.authorized ? 'AUTHORIZED' : 'DENIED'}`
     );
   });
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const accessEventSchema = z.object({
-  cardUid: z.string().min(1),
+  credentialUid: z.string().min(1),
   ownerName: z.string().optional(),
   authorized: z.boolean(),
   timestamp: z.string().datetime(),

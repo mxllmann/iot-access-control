@@ -3,12 +3,12 @@ import { AccessEvent } from '@iot-access/access-log';
 import { publishAccessEvent } from '../messaging/publisher';
 
 export const accessService = {
-  async verifyAccess(cardUid: string) {
-    const credential = await CredentialModel.findOne({ uid: cardUid });
+  async verifyAccess(credentialUid: string) {
+    const credential = await CredentialModel.findOne({ uid: credentialUid });
     const authorized = !!credential && credential.active;
 
     const event: AccessEvent = {
-      cardUid,
+      credentialUid,
       ownerName: credential?.ownerName,
       authorized,
       timestamp: new Date().toISOString(),
