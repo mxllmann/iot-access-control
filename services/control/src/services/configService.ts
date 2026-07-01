@@ -1,4 +1,4 @@
-import { ConfigModel } from '@iot-access/config';
+import { ConfigModel, ConfigValue } from '@iot-access/config';
 
 export const configService = {
   async getAll() {
@@ -9,7 +9,7 @@ export const configService = {
     return ConfigModel.findOne({ key });
   },
 
-  async upsert(key: string, value: string | number | boolean, description?: string) {
+  async upsert(key: string, value: ConfigValue, description?: string) {
     return ConfigModel.findOneAndUpdate(
       { key },
       { value, ...(description && { description }) },
