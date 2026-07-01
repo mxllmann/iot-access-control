@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as logController from '../controllers/log.controller';
+import { logController } from '../controllers/logController';
 
 const router = Router();
 
