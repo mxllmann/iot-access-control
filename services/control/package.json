@@ -6,7 +6,7 @@
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts"
   },
   "dependencies": {
-    "@iot-access/card": "*",
+    "@iot-access/credential": "*",
     "@iot-access/config": "*",
     "@iot-access/access-log": "*",
     "amqplib": "^0.10.8",

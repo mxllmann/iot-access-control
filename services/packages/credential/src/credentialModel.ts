@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Card } from './Card';
+import { Credential } from './Credential';
 
-export interface CardDocument extends Card, Document {
+export interface CredentialDocument extends Credential, Document {
   createdAt: Date;
   updatedAt: Date;
 }
 
-const CardSchema = new Schema<CardDocument>(
+const CredentialSchema = new Schema<CredentialDocument>(
   {
     uid: { type: String, required: true, unique: true },
     ownerName: { type: String, required: true },
@@ -15,4 +15,7 @@ const CardSchema = new Schema<CardDocument>(
   { timestamps: true }
 );
 
-export const CardModel = mongoose.model<CardDocument>('Card', CardSchema);
+export const CredentialModel = mongoose.model<CredentialDocument>(
+  'Credential',
+  CredentialSchema
+);

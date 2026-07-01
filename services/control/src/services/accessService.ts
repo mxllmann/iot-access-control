@@ -1,21 +1,21 @@
-import { CardModel } from '@iot-access/card';
+import { CredentialModel } from '@iot-access/credential';
 import { AccessEvent } from '@iot-access/access-log';
 import { publishAccessEvent } from '../messaging/publisher';
 
 export const accessService = {
   async verifyAccess(cardUid: string) {
-    const card = await CardModel.findOne({ uid: cardUid });
-    const authorized = !!card && card.active;
+    const credential = await CredentialModel.findOne({ uid: cardUid });
+    const authorized = !!credential && credential.active;
 
     const event: AccessEvent = {
       cardUid,
-      ownerName: card?.ownerName,
+      ownerName: credential?.ownerName,
       authorized,
       timestamp: new Date().toISOString(),
     };
 
     publishAccessEvent(event);
 
-    return { authorized, ownerName: card?.ownerName };
+    return { authorized, ownerName: credential?.ownerName };
   },
 };

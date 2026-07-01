@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
-import { createCardSchema, updateCardSchema } from '@iot-access/card';
+import {
+  createCredentialSchema,
+  updateCredentialSchema,
+} from '@iot-access/credential';
 import { z } from 'zod';
-import { cardService } from '../services/cardService';
+import { credentialService } from '../services/credentialService';
 
 const startEnrollmentSchema = z.object({
   ownerName: z.string().min(1),
@@ -11,31 +14,34 @@ const completeEnrollmentSchema = z.object({
   uid: z.string().min(1),
 });
 
-export const cardController = {
+export const credentialController = {
   async getAll(_req: Request, res: Response) {
-    const cards = await cardService.getAll();
-    res.json(cards);
+    const credentials = await credentialService.getAll();
+    res.json(credentials);
   },
 
   async getActive(_req: Request, res: Response) {
-    const cards = await cardService.getActive();
-    res.json(cards);
+    const credentials = await credentialService.getActive();
+    res.json(credentials);
   },
 
   async getByUid(req: Request<{ uid: string }>, res: Response) {
-    const card = await cardService.getByUid(req.params.uid);
-    if (!card) return res.status(404).json({ error: 'Card not found' });
-    res.json(card);
+    const credential = await credentialService.getByUid(req.params.uid);
+    if (!credential) return res.status(404).json({ error: 'Credential not found' });
+    res.json(credential);
   },
 
   async create(req: Request, res: Response) {
-    const parsed = createCardSchema.safeParse(req.body);
+    const parsed = createCredentialSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
     try {
-      const card = await cardService.register(parsed.data.uid, parsed.data.ownerName);
-      res.status(201).json(card);
+      const credential = await credentialService.register(
+        parsed.data.uid,
+        parsed.data.ownerName
+      );
+      res.status(201).json(credential);
     } catch (err: any) {
       res.status(409).json({ error: err.message });
     }
@@ -47,12 +53,12 @@ export const cardController = {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
 
-    const enrollment = await cardService.startEnrollment(parsed.data.ownerName);
+    const enrollment = await credentialService.startEnrollment(parsed.data.ownerName);
     res.status(201).json(enrollment);
   },
 
   async getEnrollmentStatus(_req: Request, res: Response) {
-    const enrollment = await cardService.getEnrollmentStatus();
+    const enrollment = await credentialService.getEnrollmentStatus();
     res.json(enrollment);
   },
 
@@ -62,7 +68,7 @@ export const cardController = {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
 
-    const result = await cardService.completeEnrollment(parsed.data.uid);
+    const result = await credentialService.completeEnrollment(parsed.data.uid);
 
     if (result.enrollment.status === 'success') {
       return res.status(201).json(result);
@@ -76,13 +82,13 @@ export const cardController = {
   },
 
   async update(req: Request<{ uid: string }>, res: Response) {
-    const parsed = updateCardSchema.safeParse(req.body);
+    const parsed = updateCredentialSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
     try {
-      const card = await cardService.update(req.params.uid, parsed.data);
-      res.json(card);
+      const credential = await credentialService.update(req.params.uid, parsed.data);
+      res.json(credential);
     } catch (err: any) {
       res.status(404).json({ error: err.message });
     }
@@ -90,7 +96,7 @@ export const cardController = {
 
   async remove(req: Request<{ uid: string }>, res: Response) {
     try {
-      await cardService.remove(req.params.uid);
+      await credentialService.remove(req.params.uid);
       res.status(204).send();
     } catch (err: any) {
       res.status(404).json({ error: err.message });
