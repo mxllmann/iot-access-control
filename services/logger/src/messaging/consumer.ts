@@ -1,5 +1,6 @@
 import amqplib from 'amqplib';
-import { AccessEvent, ACCESS_EVENT_QUEUE } from '@iot-access/access-log';
+import { ACCESS_EVENT_QUEUE } from '@iot-access/access-log/src/AccessEvent';
+import type { AccessEvent } from '@iot-access/access-log/src/AccessEvent';
 
 export async function startConsumer(
   url: string,

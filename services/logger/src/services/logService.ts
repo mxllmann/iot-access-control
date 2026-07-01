@@ -1,4 +1,5 @@
-import { AccessLogModel, AccessEvent } from '@iot-access/access-log';
+import { AccessLogModel } from '@iot-access/access-log/src/accessLogModel';
+import type { AccessEvent } from '@iot-access/access-log/src/AccessEvent';
 
 export const logService = {
   async logAccess(event: AccessEvent) {

@@ -1,5 +1,5 @@
 import { CredentialModel } from '@iot-access/credential';
-import { AccessEvent } from '@iot-access/access-log';
+import type { AccessEvent } from '@iot-access/access-log/src/AccessEvent';
 import { publishAccessEvent } from '../messaging/publisher';
 
 export const accessService = {
