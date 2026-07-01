@@ -2,9 +2,9 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import { connectRabbitMQ } from './messaging/publisher';
-import cardRoutes from './routes/card.routes';
-import configRoutes from './routes/config.routes';
-import accessRoutes from './routes/access.routes';
+import cardRoutes from './routes/cardRoutes';
+import configRoutes from './routes/configRoutes';
+import accessRoutes from './routes/accessRoutes';
 
 const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/iot-access-control';

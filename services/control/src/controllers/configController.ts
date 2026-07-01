@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { updateConfigSchema } from '@iot-access/config';
-import * as configService from '../services/config.service';
+import { configService } from '../services/configService';
 
 export const configController = {
   async getAll(_req: Request, res: Response) {

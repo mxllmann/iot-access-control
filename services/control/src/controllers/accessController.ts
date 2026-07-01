@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import * as accessService from '../services/access.service';
+import { accessService } from '../services/accessService';
 
 const verifyAccessSchema = z.object({
   cardUid: z.string().min(1),

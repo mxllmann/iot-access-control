@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createCardSchema, updateCardSchema } from '@iot-access/card';
-import * as cardService from '../services/card.service';
+import { cardService } from '../services/cardService';
 
 export const cardController = {
   async getAll(_req: Request, res: Response) {
@@ -13,7 +13,7 @@ export const cardController = {
     res.json(cards);
   },
 
-  async getByUid(req: Request, res: Response) {
+  async getByUid(req: Request<{ uid: string }>, res: Response) {
     const card = await cardService.getByUid(req.params.uid);
     if (!card) return res.status(404).json({ error: 'Card not found' });
     res.json(card);
@@ -32,7 +32,7 @@ export const cardController = {
     }
   },
 
-  async update(req: Request, res: Response) {
+  async update(req: Request<{ uid: string }>, res: Response) {
     const parsed = updateCardSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
@@ -45,7 +45,7 @@ export const cardController = {
     }
   },
 
-  async remove(req: Request, res: Response) {
+  async remove(req: Request<{ uid: string }>, res: Response) {
     try {
       await cardService.remove(req.params.uid);
       res.status(204).send();

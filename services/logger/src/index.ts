@@ -2,8 +2,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import { startConsumer } from './messaging/consumer';
-import * as logService from './services/log.service';
-import logRoutes from './routes/log.routes';
+import { logService } from './services/logService';
+import logRoutes from './routes/logRoutes';
 
 const PORT = process.env.PORT || 3002;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/iot-access-logger';

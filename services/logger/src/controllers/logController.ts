@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import * as logService from '../services/log.service';
+import { logService } from '../services/logService';
 
 export const logController = {
   async getAll(req: Request, res: Response) {

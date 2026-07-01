@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { accessController } from '../controllers/access.controller';
+import { accessController } from '../controllers/accessController';
 
 const router = Router();
 
