@@ -9,10 +9,9 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { api, EnrollmentStatus } from '../api';
+import { api, EnrollmentStatus } from '../../src/api';
 
 type EnrollmentState =
   | { phase: 'idle' }
@@ -20,13 +19,11 @@ type EnrollmentState =
   | { phase: 'waiting'; ownerName: string }
   | { phase: 'done'; enrollment: EnrollmentStatus };
 
-export default function RegisterScreen() {
-  // -- Enrollment state --
+export default function RegisterTab() {
   const [enrollment, setEnrollment] = useState<EnrollmentState>({ phase: 'idle' });
   const [enrollName, setEnrollName] = useState('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // -- Manual form state --
   const [uid, setUid] = useState('');
   const [holder, setHolder] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -124,7 +121,7 @@ export default function RegisterScreen() {
                 style={({ pressed }) => [styles.confirmButton, pressed && styles.pressed]}
                 onPress={startEnrollment}
               >
-                <Text style={styles.confirmText}>Aguardar Cartao</Text>
+                <Text style={styles.confirmText}>Aguardar Cartão</Text>
               </Pressable>
             </View>
           </View>
@@ -134,7 +131,7 @@ export default function RegisterScreen() {
         return (
           <View style={styles.waitingContainer}>
             <ActivityIndicator color="#4CAF50" size="large" />
-            <Text style={styles.waitingTitle}>Aproxime o cartao do leitor</Text>
+            <Text style={styles.waitingTitle}>Aproxime o cartão do leitor</Text>
             <Text style={styles.waitingSubtitle}>
               Cadastrando para: {enrollment.ownerName}
             </Text>
@@ -179,27 +176,24 @@ export default function RegisterScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Cadastrar Credencial</Text>
 
-      {/* Enrollment Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Enrollment via Leitor</Text>
         <Text style={styles.sectionDesc}>
-          Cadastre aproximando o cartao no leitor RFID
+          Cadastre aproximando o cartão no leitor RFID
         </Text>
         {renderEnrollmentContent()}
       </View>
 
-      {/* Divider */}
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>ou</Text>
         <View style={styles.dividerLine} />
       </View>
 
-      {/* Manual Form */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Cadastro Manual</Text>
 
-        <Text style={styles.label}>UID do Cartao</Text>
+        <Text style={styles.label}>UID do Cartão</Text>
         <TextInput
           style={styles.input}
           value={uid}

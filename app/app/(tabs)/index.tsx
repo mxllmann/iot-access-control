@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { api, Credential } from '../api';
-import CredentialCard from '../components/CredentialCard';
+import { api, Credential } from '../../src/api';
+import CredentialCard from '../../src/components/CredentialCard';
 
-type Props = {
-  onSelectCredential?: (credential: Credential) => void;
-};
-
-export default function CardsScreen({ onSelectCredential }: Props) {
+export default function CardsTab() {
+  const router = useRouter();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +60,15 @@ export default function CardsScreen({ onSelectCredential }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Credenciais</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Credenciais</Text>
+        <Pressable
+          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+          onPress={() => router.push('/(tabs)/register')}
+        >
+          <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
+        </Pressable>
+      </View>
       <FlatList
         data={credentials}
         keyExtractor={(item) => item._id}
@@ -69,7 +76,7 @@ export default function CardsScreen({ onSelectCredential }: Props) {
         renderItem={({ item }) => (
           <CredentialCard
             credential={item}
-            onPress={() => onSelectCredential?.(item)}
+            onPress={() => router.push(`/credential/${item.uid}`)}
             onLongPress={() => toggleActive(item)}
           />
         )}
@@ -84,7 +91,17 @@ export default function CardsScreen({ onSelectCredential }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#0D0D0D' },
   center: { justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF' },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2A2A2A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonPressed: { opacity: 0.7 },
   list: { gap: 16 },
   errorText: { fontSize: 16, color: '#F44336', marginBottom: 12 },
   retryButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#1A1A1A', borderRadius: 10 },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,22 +9,45 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { api, Credential } from '../api';
-import CredentialCard from '../components/CredentialCard';
+import { api, Credential } from '../../src/api';
+import CredentialCard from '../../src/components/CredentialCard';
 
-type Props = {
-  credential: Credential;
-  onBack: () => void;
-  onUpdated: (credential: Credential) => void;
-  onDeleted: (uid: string) => void;
-};
+export default function CredentialDetail() {
+  const { uid } = useLocalSearchParams<{ uid: string }>();
+  const router = useRouter();
 
-export default function CredentialDetailScreen({ credential, onBack, onUpdated, onDeleted }: Props) {
-  const [ownerName, setOwnerName] = useState(credential.ownerName);
+  const [credential, setCredential] = useState<Credential | null>(null);
+  const [ownerName, setOwnerName] = useState('');
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const fetchCredential = useCallback(async () => {
+    try {
+      setLoading(true);
+      const all = await api.credentials.getAll();
+      const found = all.find((c) => c.uid === uid);
+      if (found) {
+        setCredential(found);
+        setOwnerName(found.ownerName);
+      }
+    } catch {} finally {
+      setLoading(false);
+    }
+  }, [uid]);
+
+  useEffect(() => { fetchCredential(); }, [fetchCredential]);
+
+  if (loading || !credential) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator color="#FFFFFF" size="large" />
+      </View>
+    );
+  }
 
   const hasChanges = ownerName.trim() !== credential.ownerName;
 
@@ -34,7 +57,7 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
     setSaving(true);
     try {
       const updated = await api.credentials.update(credential.uid, { ownerName: ownerName.trim() });
-      onUpdated(updated);
+      setCredential(updated);
     } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
@@ -47,7 +70,7 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
     setSaving(true);
     try {
       const updated = await api.credentials.update(credential.uid, { active: !credential.active });
-      onUpdated(updated);
+      setCredential(updated);
     } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
@@ -69,7 +92,7 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
             setDeleting(true);
             try {
               await api.credentials.delete(credential.uid);
-              onDeleted(credential.uid);
+              router.back();
             } catch (err: any) {
               Alert.alert('Erro', err.message);
               setDeleting(false);
@@ -82,9 +105,8 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.headerTitle}>Detalhes</Text>
@@ -92,12 +114,10 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Card preview */}
         <CredentialCard credential={{ ...credential, ownerName: ownerName.trim() || credential.ownerName }} />
 
-        {/* Edit form */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Informacoes</Text>
+          <Text style={styles.sectionTitle}>Informações</Text>
 
           <Text style={styles.label}>UID</Text>
           <View style={styles.readonlyField}>
@@ -123,15 +143,14 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
             ) : (
               <>
                 <MaterialCommunityIcons name="content-save-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.saveText}>Salvar Alteracoes</Text>
+                <Text style={styles.saveText}>Salvar Alterações</Text>
               </>
             )}
           </Pressable>
         </View>
 
-        {/* Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Acoes</Text>
+          <Text style={styles.sectionTitle}>Ações</Text>
 
           <Pressable
             style={({ pressed }) => [
@@ -174,6 +193,7 @@ export default function CredentialDetailScreen({ credential, onBack, onUpdated, 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0D0D0D' },
+  center: { justifyContent: 'center', alignItems: 'center' },
 
   header: {
     flexDirection: 'row',

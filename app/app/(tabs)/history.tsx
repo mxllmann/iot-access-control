@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Pressable } from 'react-native';
-import { api, AccessLog } from '../api';
+import { api, AccessLog } from '../../src/api';
 
 function formatTimestamp(iso: string) {
   const d = new Date(iso);
@@ -9,7 +9,7 @@ function formatTimestamp(iso: string) {
   return { time, date };
 }
 
-export default function HistoryScreen() {
+export default function HistoryTab() {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function HistoryScreen() {
   if (error) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>Erro ao carregar historico</Text>
+        <Text style={styles.errorText}>Erro ao carregar histórico</Text>
         <Pressable style={styles.retryButton} onPress={fetchLogs}>
           <Text style={styles.retryText}>Tentar novamente</Text>
         </Pressable>
@@ -50,7 +50,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Historico de Acesso</Text>
+      <Text style={styles.title}>Histórico de Acesso</Text>
       <FlatList
         data={logs}
         keyExtractor={(item) => item._id}
