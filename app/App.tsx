@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Haptics from 'expo-haptics';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
@@ -83,6 +84,7 @@ export default function App() {
   const handleNavigate = useCallback(
     (screen: Screen) => {
       if (screen === currentScreen) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       prevIndexRef.current = getIndex(currentScreen);
       const newIndex = getIndex(screen);
       indicatorX.value = withSpring(newIndex * TAB_WIDTH, SPRING_CONFIG);

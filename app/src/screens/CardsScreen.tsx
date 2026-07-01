@@ -1,35 +1,89 @@
-import { StyleSheet, Text, View, FlatList } from 'react-native';
-
-const MOCK_CARDS = [
-  { id: '1', uid: 'A1:B2:C3:D4', holder: 'Arthur Mallmann', status: 'Ativo' },
-  { id: '2', uid: 'E5:F6:G7:H8', holder: 'Joao Silva', status: 'Ativo' },
-  { id: '3', uid: 'I9:J0:K1:L2', holder: 'Maria Souza', status: 'Inativo' },
-];
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { api, Credential } from '../api';
 
 export default function CardsScreen() {
+  const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCredentials = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const data = await api.credentials.getAll();
+      setCredentials(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCredentials(); }, []);
+
+  const toggleActive = async (credential: Credential) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await api.credentials.update(credential.uid, { active: !credential.active });
+      setCredentials((prev) =>
+        prev.map((c) =>
+          c.uid === credential.uid ? { ...c, active: !c.active } : c
+        )
+      );
+    } catch {}
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator color="#FFFFFF" size="large" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.errorText}>Erro ao carregar credenciais</Text>
+        <Pressable style={styles.retryButton} onPress={fetchCredentials}>
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Credenciais</Text>
       <FlatList
-        data={MOCK_CARDS}
-        keyExtractor={(item) => item.id}
+        data={credentials}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardUid}>{item.uid}</Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  item.status === 'Ativo' ? styles.active : styles.inactive,
-                ]}
-              >
-                <Text style={styles.statusText}>{item.status}</Text>
+          <Pressable onLongPress={() => toggleActive(item)}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardUid}>{item.uid}</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    item.active ? styles.active : styles.inactive,
+                  ]}
+                >
+                  <Text style={styles.statusText}>
+                    {item.active ? 'Ativo' : 'Inativo'}
+                  </Text>
+                </View>
               </View>
+              <Text style={styles.cardHolder}>{item.ownerName}</Text>
             </View>
-            <Text style={styles.cardHolder}>{item.holder}</Text>
-          </View>
+          </Pressable>
         )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>Nenhuma credencial cadastrada</Text>
+        }
       />
     </View>
   );
@@ -37,6 +91,7 @@ export default function CardsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#0D0D0D' },
+  center: { justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 20 },
   list: { gap: 12 },
   card: {
@@ -53,4 +108,8 @@ const styles = StyleSheet.create({
   active: { backgroundColor: '#1B3A2A' },
   inactive: { backgroundColor: '#3A1B1B' },
   statusText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
+  errorText: { fontSize: 16, color: '#F44336', marginBottom: 12 },
+  retryButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#1A1A1A', borderRadius: 10 },
+  retryText: { color: '#FFFFFF', fontWeight: '600' },
+  emptyText: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 40 },
 });

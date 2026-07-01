@@ -1,31 +1,206 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
   Pressable,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { api, EnrollmentStatus } from '../api';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+type EnrollmentState =
+  | { phase: 'idle' }
+  | { phase: 'input_name' }
+  | { phase: 'waiting'; ownerName: string }
+  | { phase: 'done'; enrollment: EnrollmentStatus };
+
 export default function RegisterScreen() {
+  // -- Enrollment state --
+  const [enrollment, setEnrollment] = useState<EnrollmentState>({ phase: 'idle' });
+  const [enrollName, setEnrollName] = useState('');
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // -- Manual form state --
   const [uid, setUid] = useState('');
   const [holder, setHolder] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = () => {
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopPolling(), []);
+
+  const startEnrollment = async () => {
+    if (!enrollName.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await api.enrollment.start(enrollName.trim());
+      setEnrollment({ phase: 'waiting', ownerName: enrollName.trim() });
+      setEnrollName('');
+
+      pollingRef.current = setInterval(async () => {
+        try {
+          const status = await api.enrollment.getStatus();
+          if (status.status !== 'waiting_credential') {
+            stopPolling();
+            Haptics.notificationAsync(
+              status.status === 'success'
+                ? Haptics.NotificationFeedbackType.Success
+                : Haptics.NotificationFeedbackType.Error
+            );
+            setEnrollment({ phase: 'done', enrollment: status });
+          }
+        } catch {}
+      }, 1500);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    }
+  };
+
+  const resetEnrollment = () => {
+    stopPolling();
+    setEnrollment({ phase: 'idle' });
+  };
+
+  const handleManualRegister = async () => {
     if (!uid.trim() || !holder.trim()) return;
-    // TODO: enviar para API
-    setUid('');
-    setHolder('');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSubmitting(true);
+    try {
+      await api.credentials.create(uid.trim(), holder.trim());
+      Alert.alert('Sucesso', 'Credencial cadastrada!');
+      setUid('');
+      setHolder('');
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const renderEnrollmentContent = () => {
+    switch (enrollment.phase) {
+      case 'idle':
+        return (
+          <Pressable
+            style={({ pressed }) => [styles.enrollButton, pressed && styles.pressed]}
+            onPress={() => setEnrollment({ phase: 'input_name' })}
+          >
+            <MaterialCommunityIcons name="card-search-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.enrollButtonText}>Iniciar Enrollment</Text>
+          </Pressable>
+        );
+
+      case 'input_name':
+        return (
+          <Animated.View entering={FadeInDown.duration(300)}>
+            <Text style={styles.label}>Nome do Titular</Text>
+            <TextInput
+              style={styles.input}
+              value={enrollName}
+              onChangeText={setEnrollName}
+              placeholder="Ex: Arthur Mallmann"
+              placeholderTextColor="#555"
+              autoFocus
+            />
+            <View style={styles.enrollActions}>
+              <Pressable
+                style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+                onPress={resetEnrollment}
+              >
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.confirmButton, pressed && styles.pressed]}
+                onPress={startEnrollment}
+              >
+                <Text style={styles.confirmText}>Aguardar Cartao</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        );
+
+      case 'waiting':
+        return (
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.waitingContainer}>
+            <ActivityIndicator color="#4CAF50" size="large" />
+            <Text style={styles.waitingTitle}>Aproxime o cartao do leitor</Text>
+            <Text style={styles.waitingSubtitle}>
+              Cadastrando para: {enrollment.ownerName}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.cancelButton, { marginTop: 16 }, pressed && styles.pressed]}
+              onPress={resetEnrollment}
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </Pressable>
+          </Animated.View>
+        );
+
+      case 'done': {
+        const success = enrollment.enrollment.status === 'success';
+        return (
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.doneContainer}>
+            <MaterialCommunityIcons
+              name={success ? 'check-circle-outline' : 'alert-circle-outline'}
+              size={48}
+              color={success ? '#4CAF50' : '#F44336'}
+            />
+            <Text style={[styles.doneTitle, { color: success ? '#4CAF50' : '#F44336' }]}>
+              {success ? 'Credencial cadastrada!' : 'Falha no enrollment'}
+            </Text>
+            <Text style={styles.doneMessage}>{enrollment.enrollment.message}</Text>
+            {enrollment.enrollment.uid && (
+              <Text style={styles.doneUid}>UID: {enrollment.enrollment.uid}</Text>
+            )}
+            <Pressable
+              style={({ pressed }) => [styles.confirmButton, { marginTop: 16 }, pressed && styles.pressed]}
+              onPress={resetEnrollment}
+            >
+              <Text style={styles.confirmText}>Novo Cadastro</Text>
+            </Pressable>
+          </Animated.View>
+        );
+      }
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Cadastrar Credencial</Text>
 
-      <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.form}>
+      {/* Enrollment Section */}
+      <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.section}>
+        <Text style={styles.sectionTitle}>Enrollment via Leitor</Text>
+        <Text style={styles.sectionDesc}>
+          Cadastre aproximando o cartao no leitor RFID
+        </Text>
+        {renderEnrollmentContent()}
+      </Animated.View>
+
+      {/* Divider */}
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>ou</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      {/* Manual Form */}
+      <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
+        <Text style={styles.sectionTitle}>Cadastro Manual</Text>
+
         <Text style={styles.label}>UID do Cartao</Text>
         <TextInput
           style={styles.input}
@@ -46,24 +221,41 @@ export default function RegisterScreen() {
         />
 
         <AnimatedPressable
-          entering={FadeInDown.delay(200).duration(400)}
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-          onPress={handleRegister}
+          entering={FadeInDown.delay(300).duration(400)}
+          style={({ pressed }: { pressed: boolean }) => [styles.button, pressed && styles.pressed]}
+          onPress={handleManualRegister}
+          disabled={submitting}
         >
-          <Text style={styles.buttonText}>Cadastrar</Text>
+          {submitting ? (
+            <ActivityIndicator color="#0D0D0D" />
+          ) : (
+            <Text style={styles.buttonText}>Cadastrar</Text>
+          )}
         </AnimatedPressable>
       </Animated.View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#0D0D0D' },
+  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  content: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
   title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 24 },
-  form: { gap: 12 },
-  label: { fontSize: 14, fontWeight: '600', color: '#AAA', marginBottom: -4 },
-  input: {
+
+  section: {
     backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    gap: 12,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  sectionDesc: { fontSize: 13, color: '#888', marginTop: -4 },
+
+  label: { fontSize: 14, fontWeight: '600', color: '#AAA' },
+  input: {
+    backgroundColor: '#0D0D0D',
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
@@ -71,13 +263,62 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
+
+  enrollButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 4,
+  },
+  enrollButtonText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+
+  enrollActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  cancelButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#2A2A2A',
+  },
+  cancelText: { fontSize: 14, fontWeight: '600', color: '#888' },
+  confirmButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#4CAF50',
+  },
+  confirmText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+
+  waitingContainer: { alignItems: 'center', paddingVertical: 20, gap: 12 },
+  waitingTitle: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  waitingSubtitle: { fontSize: 13, color: '#888' },
+
+  doneContainer: { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  doneTitle: { fontSize: 18, fontWeight: '700' },
+  doneMessage: { fontSize: 13, color: '#888' },
+  doneUid: { fontSize: 14, color: '#666', fontFamily: 'monospace' },
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#2A2A2A' },
+  dividerText: { fontSize: 13, color: '#555' },
+
   button: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
-  buttonPressed: { opacity: 0.8 },
+  pressed: { opacity: 0.8 },
   buttonText: { fontSize: 16, fontWeight: '700', color: '#0D0D0D' },
 });
