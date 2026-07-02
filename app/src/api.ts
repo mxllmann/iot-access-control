@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:6000';
+const BASE_URL = 'https://ce79-179-181-81-14.ngrok-free.app';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {

@@ -1,44 +1,37 @@
 #include <SPI.h>
 #include <MFRC522.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
 // ============ CONFIGURACAO ============
-const char* WIFI_SSID     = "Wsforever";
-const char* WIFI_PASSWORD = "wsforever201";
-const char* API_BASE      = "https://ce79-179-181-81-14.ngrok-free.app/control";
+const char* WIFI_SSID     = "SEU_WIFI";
+const char* WIFI_PASSWORD = "SUA_SENHA";
+const char* API_BASE      = "https://SEU_NGROK.ngrok-free.app/control";
 // ======================================
 
 // ============================================================
-// Wemos D1 R2 (formato Arduino UNO) — Mapeamento de pinos
+// ESP32 DevKit (ESP-WROOM-32) — Mapeamento de pinos
 //
-// Os labels na placa (D0-D15) NAO correspondem aos defines
-// Dx do NodeMCU. Usamos GPIO direto.
+// SPI padrao do ESP32 (VSPI):
+//   GPIO18 — SCK
+//   GPIO19 — MISO
+//   GPIO23 — MOSI
 //
-// PINOS SEGUROS (sem restricao de boot):
-//   D2 (GPIO16)  — LED Verde
-//   D3 (GPIO5)   — LED Vermelho
-//   D4 (GPIO4)   — RC522 SDA
-//
-// PINOS DE BOOT (cuidado):
-//   D8  (GPIO0)  — Rele       (pull-up interno = HIGH no boot, OK)
-//   D9  (GPIO2)  — RC522 RST  (pull-up interno, OK)
-//
-// SPI (fixo no hardware):
-//   D5  (GPIO14) — SCK
-//   D6  (GPIO12) — MISO
-//   D7  (GPIO13) — MOSI
-//
-// LIVRE: D10 (GPIO15) — NAO USAR (pull-down, causa problema)
+// Pinos livres usados:
+//   GPIO5  — RC522 SDA (SS)
+//   GPIO17 — RC522 RST
+//   GPIO2  — LED Verde (LED onboard em alguns devkits)
+//   GPIO4  — LED Vermelho
+//   GPIO16 — Rele IN1
 // ============================================================
 
-#define LED_GREEN 16   // placa: D2
-#define LED_RED    5   // placa: D3
-#define RFID_SDA   4   // placa: D4
-#define RFID_RST  -1   // RST ligado direto no 3.3V (sem pino GPIO)
-#define RELAY      0   // placa: D8
+#define LED_GREEN  2
+#define LED_RED    4
+#define RELAY     16
+#define RFID_SDA   5
+#define RFID_RST  17
+// SPI: SCK=18, MISO=19, MOSI=23 (padrao VSPI, automatico)
 
 MFRC522 rfid(RFID_SDA, RFID_RST);
 
@@ -63,9 +56,9 @@ void connectWiFi() {
 }
 
 void setup() {
-  delay(2000);
-  Serial.begin(9600);
-  Serial.println("\n=== Controle de Acesso — Wemos D1 R2 ===\n");
+  delay(1000);
+  Serial.begin(115200);
+  Serial.println("\n=== Controle de Acesso — ESP32 ===\n");
 
   pinMode(LED_GREEN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
@@ -133,67 +126,65 @@ bool ensureWiFi() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-// Resultado do request: 0=erro, 1=acesso autorizado, 2=acesso negado, 3=enrollment ok, 4=enrollment falhou
-int handleCard(const String& uid) {
-  if (!ensureWiFi()) return 0;
+int doPost(const String& url, const String& body) {
+  if (!ensureWiFi()) return -1;
 
-  // Primeiro tenta acesso (1 request)
   HTTPClient http;
   if (String(API_BASE).startsWith("https")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setBufferSizes(4096, 512);
-    client.setTimeout(15000);
-    Serial.print("Heap: "); Serial.println(ESP.getFreeHeap());
-
-    // Teste DNS
-    IPAddress ip;
-    if (WiFi.hostByName("ce79-179-181-81-14.ngrok-free.app", ip)) {
-      Serial.print("DNS OK: "); Serial.println(ip);
-    } else {
-      Serial.println("DNS FALHOU!");
-    }
-    http.begin(client, String(API_BASE) + "/access");
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
-    String body = "{\"credentialUid\":\"" + uid + "\"}";
-    Serial.print("POST -> ");
-    Serial.println(body);
-    int code = http.POST(body);
-    if (code > 0) {
-      String resp = http.getString();
-      Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
-      http.end();
-      if (resp.indexOf("\"authorized\":true") >= 0) return 1;
-      // Nao autorizado — pode ser enrollment pendente
-      // Verifica na proxima leitura
-      return 2;
-    }
-    Serial.print("Erro: "); Serial.println(http.errorToString(code));
-    http.end();
-    return 0;
+    return http.POST(body);
   } else {
     WiFiClient client;
-    http.begin(client, String(API_BASE) + "/access");
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
-    String body = "{\"credentialUid\":\"" + uid + "\"}";
-    Serial.print("POST -> ");
-    Serial.println(body);
-    int code = http.POST(body);
-    if (code > 0) {
-      String resp = http.getString();
-      Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
-      http.end();
-      if (resp.indexOf("\"authorized\":true") >= 0) return 1;
-      return 2;
-    }
-    Serial.print("Erro: "); Serial.println(http.errorToString(code));
-    http.end();
-    return 0;
+    return http.POST(body);
   }
 }
 
-// Enrollment separado — chamado só quando o usuario aproxima
-// o cartao uma segunda vez apos acesso negado
+// Variaveis para manter resposta entre chamadas
+String lastResponse;
+HTTPClient globalHttp;
+
+int handleCard(const String& uid) {
+  if (!ensureWiFi()) return 0;
+
+  String url = String(API_BASE) + "/access";
+  String body = "{\"credentialUid\":\"" + uid + "\"}";
+  Serial.print("POST -> "); Serial.println(body);
+
+  HTTPClient http;
+  int code;
+  String resp;
+
+  if (String(API_BASE).startsWith("https")) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    http.begin(client, url);
+    http.addHeader("Content-Type", "application/json");
+    code = http.POST(body);
+    if (code > 0) resp = http.getString();
+    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
+    http.end();
+  } else {
+    WiFiClient client;
+    http.begin(client, url);
+    http.addHeader("Content-Type", "application/json");
+    code = http.POST(body);
+    if (code > 0) resp = http.getString();
+    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
+    http.end();
+  }
+
+  if (code <= 0) return 0;
+
+  Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
+  if (resp.indexOf("\"authorized\":true") >= 0) return 1;
+  return 2;
+}
+
 bool enrollCard(const String& uid) {
   if (!ensureWiFi()) return false;
 
@@ -202,48 +193,31 @@ bool enrollCard(const String& uid) {
   Serial.print("Enrollment -> "); Serial.println(body);
 
   HTTPClient http;
-  bool success = false;
+  int code;
+  String resp;
 
   if (String(API_BASE).startsWith("https")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setBufferSizes(4096, 512);
-    client.setTimeout(15000);
-    Serial.print("Heap: "); Serial.println(ESP.getFreeHeap());
-
-    // Teste DNS
-    IPAddress ip;
-    if (WiFi.hostByName("ce79-179-181-81-14.ngrok-free.app", ip)) {
-      Serial.print("DNS OK: "); Serial.println(ip);
-    } else {
-      Serial.println("DNS FALHOU!");
-    }
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
-    int code = http.POST(body);
-    if (code > 0) {
-      String resp = http.getString();
-      Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
-      success = resp.indexOf("\"status\":\"success\"") >= 0;
-    } else {
-      Serial.print("Erro: "); Serial.println(http.errorToString(code));
-    }
+    code = http.POST(body);
+    if (code > 0) resp = http.getString();
+    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
     http.end();
   } else {
     WiFiClient client;
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
-    int code = http.POST(body);
-    if (code > 0) {
-      String resp = http.getString();
-      Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
-      success = resp.indexOf("\"status\":\"success\"") >= 0;
-    } else {
-      Serial.print("Erro: "); Serial.println(http.errorToString(code));
-    }
+    code = http.POST(body);
+    if (code > 0) resp = http.getString();
+    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
     http.end();
   }
-  return success;
+
+  if (code <= 0) return false;
+  Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
+  return resp.indexOf("\"status\":\"success\"") >= 0;
 }
 
 void accessGranted() {
@@ -298,7 +272,7 @@ void loop() {
   if (result == 1) {
     accessGranted();
   } else if (result == 2) {
-    // Acesso negado — tenta enrollment (pode ser cadastro pendente)
+    // Acesso negado — tenta enrollment
     if (enrollCard(uid)) {
       enrollmentSuccess();
     } else {
