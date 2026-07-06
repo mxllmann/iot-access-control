@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const credentialSchema = z.object({
   uid: z.string().min(1),
   ownerName: z.string().min(1),
+  userId: z.string().optional(),
   active: z.boolean().default(true),
 });
 

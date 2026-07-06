@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { api, EnrollmentStatus } from '../../src/api';
+import { api, EnrollmentStatus, User } from '../../src/api';
 
 type EnrollmentState =
   | { phase: 'idle' }
@@ -22,11 +22,17 @@ type EnrollmentState =
 export default function RegisterTab() {
   const [enrollment, setEnrollment] = useState<EnrollmentState>({ phase: 'idle' });
   const [enrollName, setEnrollName] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [users, setUsers] = useState<User[]>([]);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [uid, setUid] = useState('');
   const [holder, setHolder] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.users.getAll().then(setUsers).catch(() => {});
+  }, []);
 
   const stopPolling = () => {
     if (pollingRef.current) {
@@ -41,7 +47,7 @@ export default function RegisterTab() {
     if (!enrollName.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await api.enrollment.start(enrollName.trim());
+      await api.enrollment.start(enrollName.trim(), selectedUserId || undefined);
       setEnrollment({ phase: 'waiting', ownerName: enrollName.trim() });
       setEnrollName('');
 
@@ -67,6 +73,7 @@ export default function RegisterTab() {
   const resetEnrollment = () => {
     stopPolling();
     setEnrollment({ phase: 'idle' });
+    setSelectedUserId('');
   };
 
   const handleManualRegister = async () => {
@@ -74,16 +81,50 @@ export default function RegisterTab() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSubmitting(true);
     try {
-      await api.credentials.create(uid.trim(), holder.trim());
+      await api.credentials.create(uid.trim(), holder.trim(), selectedUserId || undefined);
       Alert.alert('Sucesso', 'Credencial cadastrada!');
       setUid('');
       setHolder('');
+      setSelectedUserId('');
     } catch (err: any) {
       Alert.alert('Erro', err.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const renderUserPicker = () => (
+    <View style={styles.userPicker}>
+      <Text style={styles.label}>Associar a Usuário (opcional)</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.userScroll}>
+        <Pressable
+          style={[styles.userChip, !selectedUserId && styles.userChipSelected]}
+          onPress={() => setSelectedUserId('')}
+        >
+          <Text style={[styles.userChipText, !selectedUserId && styles.userChipTextSelected]}>
+            Nenhum
+          </Text>
+        </Pressable>
+        {users.map((u) => (
+          <Pressable
+            key={u._id}
+            style={[styles.userChip, selectedUserId === u._id && styles.userChipSelected]}
+            onPress={() => {
+              setSelectedUserId(u._id);
+              if (enrollment.phase === 'input_name' && !enrollName.trim()) {
+                setEnrollName(u.name);
+              }
+              if (!holder.trim()) setHolder(u.name);
+            }}
+          >
+            <Text style={[styles.userChipText, selectedUserId === u._id && styles.userChipTextSelected]}>
+              {u.name}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
 
   const renderEnrollmentContent = () => {
     switch (enrollment.phase) {
@@ -101,6 +142,7 @@ export default function RegisterTab() {
       case 'input_name':
         return (
           <View>
+            {renderUserPicker()}
             <Text style={styles.label}>Nome do Titular</Text>
             <TextInput
               style={styles.input}
@@ -193,6 +235,8 @@ export default function RegisterTab() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Cadastro Manual</Text>
 
+        {renderUserPicker()}
+
         <Text style={styles.label}>UID do Cartão</Text>
         <TextInput
           style={styles.input}
@@ -257,6 +301,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
+
+  userPicker: { gap: 8 },
+  userScroll: { flexGrow: 0 },
+  userChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#0D0D0D',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    marginRight: 8,
+  },
+  userChipSelected: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  userChipText: { fontSize: 13, color: '#888' },
+  userChipTextSelected: { color: '#FFFFFF', fontWeight: '600' },
 
   enrollButton: {
     flexDirection: 'row',

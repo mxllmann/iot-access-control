@@ -5,9 +5,10 @@
 #include <WiFiClientSecure.h>
 
 // ============ CONFIGURACAO ============
-const char* WIFI_SSID     = "Wsforever";
-const char* WIFI_PASSWORD = "wsforever201";
-const char* API_BASE      = "https://ce79-179-181-81-14.ngrok-free.app/control";
+const char* WIFI_SSID     = ".HUB Primavera - Visitantes";
+const char* WIFI_PASSWORD = "primavera1710";
+const char* API_BASE      = "https://aed1-189-28-42-50.ngrok-free.app";
+const char* API_KEY       = "iot-device-key";
 // ======================================
 
 // ============================================================
@@ -20,17 +21,17 @@ const char* API_BASE      = "https://ce79-179-181-81-14.ngrok-free.app/control";
 //
 // Pinos livres usados:
 //   GPIO5  — RC522 SDA (SS)
-//   GPIO17 — RC522 RST
+//   GPIO22 — RC522 RST
 //   GPIO2  — LED Verde (LED onboard em alguns devkits)
 //   GPIO4  — LED Vermelho
-//   GPIO16 — Rele IN1
+//   GPIO27 — Rele IN1
 // ============================================================
 
 #define LED_GREEN  2
 #define LED_RED    4
-#define RELAY     16
+#define RELAY     27
 #define RFID_SDA   5
-#define RFID_RST  17
+#define RFID_RST  22
 
 MFRC522 rfid(RFID_SDA, RFID_RST);
 
@@ -38,7 +39,7 @@ void connectWiFi() {
   Serial.print("Conectando ao WiFi");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
     delay(500);
     Serial.print(".");
     attempts++;
@@ -77,7 +78,16 @@ void setup() {
   delay(500);
   digitalWrite(LED_RED, LOW);
 
-  Serial.println("Testando rele...");
+  Serial.println("Testando rele (HIGH)... escute o clique!");
+  digitalWrite(RELAY, HIGH);
+  delay(1000);
+  Serial.println("Desligando rele (LOW)...");
+  digitalWrite(RELAY, LOW);
+  delay(500);
+  Serial.println("Testando rele (LOW)... escute o clique!");
+  digitalWrite(RELAY, LOW);
+  delay(1000);
+  Serial.println("Desligando rele (HIGH)...");
   digitalWrite(RELAY, HIGH);
   delay(500);
   digitalWrite(RELAY, LOW);
@@ -138,6 +148,7 @@ int doGet(const String& url, String& response) {
   client.setInsecure();
 
   http.begin(client, url);
+  http.addHeader("X-API-Key", API_KEY);
   int code = http.GET();
   if (code > 0) {
     response = http.getString();
@@ -160,6 +171,7 @@ int doPost(const String& url, const String& body, String& response) {
 
   http.begin(client, url);
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-API-Key", API_KEY);
 
   int code = http.POST(body);
   if (code > 0) {
@@ -203,7 +215,7 @@ bool isEnrollmentActive() {
       && resp.indexOf("\"status\":\"waiting_credential\"") >= 0;
 }
 
-// Verifica acesso: POST /control/access
+// Verifica acesso: POST /access
 // Retorna: 0=erro, 1=autorizado, 2=negado
 int checkAccess(const String& uid) {
   String url = String(API_BASE) + "/access";
@@ -220,7 +232,7 @@ int checkAccess(const String& uid) {
   return 2;
 }
 
-// Enrollment: POST /control/credentials/enrollment/read
+// Enrollment: POST /credentials/enrollment/read
 bool enrollCard(const String& uid) {
   String url = String(API_BASE) + "/credentials/enrollment/read";
   String body = "{\"uid\":\"" + uid + "\"}";
@@ -287,6 +299,7 @@ void loop() {
     // Modo enrollment — cadastra o cartao
     Serial.println("Modo ENROLLMENT ativo");
     if (enrollCard(uid)) {
+
       enrollmentSuccess();
     } else {
       enrollmentFailed();

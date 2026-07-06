@@ -9,6 +9,7 @@
 const char* WIFI_SSID     = "Wsforever";
 const char* WIFI_PASSWORD = "wsforever201";
 const char* API_BASE      = "https://ce79-179-181-81-14.ngrok-free.app/control";
+const char* API_KEY       = "iot-device-key";
 // ======================================
 
 // ============================================================
@@ -82,10 +83,12 @@ int doGet(const String& url, String& response) {
     client.setBufferSizes(4096, 512);
     client.setTimeout(15000);
     http.begin(client, url);
+    http.addHeader("X-API-Key", API_KEY);
     code = http.GET();
   } else {
     WiFiClient client;
     http.begin(client, url);
+    http.addHeader("X-API-Key", API_KEY);
     code = http.GET();
   }
 
@@ -114,11 +117,13 @@ int doPost(const String& url, const String& body, String& response) {
     client.setTimeout(15000);
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-API-Key", API_KEY);
     code = http.POST(body);
   } else {
     WiFiClient client;
     http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-API-Key", API_KEY);
     code = http.POST(body);
   }
 

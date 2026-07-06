@@ -8,6 +8,7 @@ import { credentialService } from '../services/credentialService';
 
 const startEnrollmentSchema = z.object({
   ownerName: z.string().min(1),
+  userId: z.string().optional(),
 });
 
 const completeEnrollmentSchema = z.object({
@@ -15,8 +16,12 @@ const completeEnrollmentSchema = z.object({
 });
 
 export const credentialController = {
-  async getAll(_req: Request, res: Response) {
-    const credentials = await credentialService.getAll();
+  async getAll(req: Request, res: Response) {
+    if (req.user?.role === 'admin') {
+      const credentials = await credentialService.getAll();
+      return res.json(credentials);
+    }
+    const credentials = await credentialService.getByUserId(req.user!.userId);
     res.json(credentials);
   },
 
@@ -28,6 +33,11 @@ export const credentialController = {
   async getByUid(req: Request<{ uid: string }>, res: Response) {
     const credential = await credentialService.getByUid(req.params.uid);
     if (!credential) return res.status(404).json({ error: 'Credential not found' });
+
+    if (req.user?.role !== 'admin' && credential.userId !== req.user?.userId) {
+      return res.status(403).json({ error: 'Sem permissão' });
+    }
+
     res.json(credential);
   },
 
@@ -39,7 +49,8 @@ export const credentialController = {
     try {
       const credential = await credentialService.register(
         parsed.data.uid,
-        parsed.data.ownerName
+        parsed.data.ownerName,
+        parsed.data.userId
       );
       res.status(201).json(credential);
     } catch (err: any) {
@@ -53,7 +64,10 @@ export const credentialController = {
       return res.status(400).json({ error: parsed.error.flatten().fieldErrors });
     }
 
-    const enrollment = await credentialService.startEnrollment(parsed.data.ownerName);
+    const enrollment = await credentialService.startEnrollment(
+      parsed.data.ownerName,
+      parsed.data.userId
+    );
     res.status(201).json(enrollment);
   },
 

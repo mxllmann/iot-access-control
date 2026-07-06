@@ -13,11 +13,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api, Credential } from '../../src/api';
+import { useAuth } from '../../src/auth';
 import CredentialCard from '../../src/components/CredentialCard';
 
 export default function CredentialDetail() {
   const { uid } = useLocalSearchParams<{ uid: string }>();
   const router = useRouter();
+  const auth = useAuth();
+  const isAdmin = auth.status === 'authenticated' && auth.user.role === 'admin';
 
   const [credential, setCredential] = useState<Credential | null>(null);
   const [ownerName, setOwnerName] = useState('');
@@ -125,67 +128,84 @@ export default function CredentialDetail() {
           </View>
 
           <Text style={styles.label}>Nome do Titular</Text>
-          <TextInput
-            style={styles.input}
-            value={ownerName}
-            onChangeText={setOwnerName}
-            placeholder="Nome do titular"
-            placeholderTextColor="#555"
-          />
-
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && styles.pressed, !hasChanges && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={saving || !hasChanges}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="content-save-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.saveText}>Salvar Alterações</Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ações</Text>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              credential.active ? styles.deactivateButton : styles.activateButton,
-              pressed && styles.pressed,
-            ]}
-            onPress={handleToggleActive}
-            disabled={saving}
-          >
-            <MaterialCommunityIcons
-              name={credential.active ? 'close-circle-outline' : 'check-circle-outline'}
-              size={20}
-              color={credential.active ? '#F44336' : '#4CAF50'}
+          {isAdmin ? (
+            <TextInput
+              style={styles.input}
+              value={ownerName}
+              onChangeText={setOwnerName}
+              placeholder="Nome do titular"
+              placeholderTextColor="#555"
             />
-            <Text style={[styles.actionText, { color: credential.active ? '#F44336' : '#4CAF50' }]}>
-              {credential.active ? 'Desativar Credencial' : 'Ativar Credencial'}
-            </Text>
-          </Pressable>
+          ) : (
+            <View style={styles.readonlyField}>
+              <Text style={styles.readonlyText}>{credential.ownerName}</Text>
+            </View>
+          )}
 
-          <Pressable
-            style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.pressed]}
-            onPress={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator color="#F44336" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#F44336" />
-                <Text style={[styles.actionText, { color: '#F44336' }]}>Excluir Credencial</Text>
-              </>
-            )}
-          </Pressable>
+          <Text style={styles.label}>Status</Text>
+          <View style={styles.readonlyField}>
+            <Text style={[styles.readonlyText, { color: credential.active ? '#4CAF50' : '#F44336' }]}>
+              {credential.active ? 'Ativa' : 'Inativa'}
+            </Text>
+          </View>
+
+          {isAdmin && (
+            <Pressable
+              style={({ pressed }) => [styles.saveButton, pressed && styles.pressed, !hasChanges && styles.buttonDisabled]}
+              onPress={handleSave}
+              disabled={saving || !hasChanges}
+            >
+              {saving ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="content-save-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.saveText}>Salvar Alterações</Text>
+                </>
+              )}
+            </Pressable>
+          )}
         </View>
+
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Ações</Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                credential.active ? styles.deactivateButton : styles.activateButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={handleToggleActive}
+              disabled={saving}
+            >
+              <MaterialCommunityIcons
+                name={credential.active ? 'close-circle-outline' : 'check-circle-outline'}
+                size={20}
+                color={credential.active ? '#F44336' : '#4CAF50'}
+              />
+              <Text style={[styles.actionText, { color: credential.active ? '#F44336' : '#4CAF50' }]}>
+                {credential.active ? 'Desativar Credencial' : 'Ativar Credencial'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.pressed]}
+              onPress={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator color="#F44336" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="trash-can-outline" size={20} color="#F44336" />
+                  <Text style={[styles.actionText, { color: '#F44336' }]}>Excluir Credencial</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

@@ -4,10 +4,14 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { api, Credential } from '../../src/api';
+import { useAuth } from '../../src/auth';
 import CredentialCard from '../../src/components/CredentialCard';
 
 export default function CardsTab() {
   const router = useRouter();
+  const auth = useAuth();
+  const isAdmin = auth.status === 'authenticated' && auth.user.role === 'admin';
+
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +32,7 @@ export default function CardsTab() {
   useEffect(() => { fetchCredentials(); }, []);
 
   const toggleActive = async (credential: Credential) => {
+    if (!isAdmin) return;
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await api.credentials.update(credential.uid, { active: !credential.active });
@@ -37,6 +42,12 @@ export default function CardsTab() {
         )
       );
     } catch {}
+  };
+
+  const handleLogout = async () => {
+    if (auth.status === 'authenticated') {
+      await auth.logout();
+    }
   };
 
   if (loading) {
@@ -61,13 +72,28 @@ export default function CardsTab() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Credenciais</Text>
-        <Pressable
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-          onPress={() => router.push('/(tabs)/register')}
-        >
-          <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
-        </Pressable>
+        <View>
+          <Text style={styles.title}>Credenciais</Text>
+          {auth.status === 'authenticated' && (
+            <Text style={styles.userInfo}>{auth.user.name} • {auth.user.role}</Text>
+          )}
+        </View>
+        <View style={styles.headerActions}>
+          {isAdmin && (
+            <Pressable
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+              onPress={() => router.push('/(tabs)/register')}
+            >
+              <MaterialCommunityIcons name="plus" size={22} color="#FFFFFF" />
+            </Pressable>
+          )}
+          <Pressable
+            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+            onPress={handleLogout}
+          >
+            <MaterialCommunityIcons name="logout" size={22} color="#F44336" />
+          </Pressable>
+        </View>
       </View>
       <FlatList
         data={credentials}
@@ -77,7 +103,7 @@ export default function CardsTab() {
           <CredentialCard
             credential={item}
             onPress={() => router.push(`/credential/${item.uid}`)}
-            onLongPress={() => toggleActive(item)}
+            onLongPress={isAdmin ? () => toggleActive(item) : undefined}
           />
         )}
         ListEmptyComponent={
@@ -91,9 +117,11 @@ export default function CardsTab() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#0D0D0D' },
   center: { justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF' },
-  addButton: {
+  userInfo: { fontSize: 13, color: '#888', marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  iconButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -101,7 +129,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButtonPressed: { opacity: 0.7 },
+  iconButtonPressed: { opacity: 0.7 },
   list: { gap: 16 },
   errorText: { fontSize: 16, color: '#F44336', marginBottom: 12 },
   retryButton: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#1A1A1A', borderRadius: 10 },

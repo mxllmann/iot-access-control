@@ -7,6 +7,7 @@ type CredentialEnrollment = {
   enabled: boolean;
   status: EnrollmentStatus;
   ownerName: string;
+  userId: string | null;
   uid: string | null;
   message: string;
 };
@@ -22,6 +23,10 @@ export const credentialService = {
     return CredentialModel.find().sort({ createdAt: -1 });
   },
 
+  async getByUserId(userId: string) {
+    return CredentialModel.find({ userId }).sort({ createdAt: -1 });
+  },
+
   async getActive() {
     return CredentialModel.find({ active: true });
   },
@@ -30,17 +35,18 @@ export const credentialService = {
     return CredentialModel.findOne({ uid });
   },
 
-  async register(uid: string, ownerName: string) {
+  async register(uid: string, ownerName: string, userId?: string) {
     const existing = await CredentialModel.findOne({ uid });
     if (existing) throw new Error('Credential already registered');
-    return CredentialModel.create({ uid, ownerName });
+    return CredentialModel.create({ uid, ownerName, userId: userId || null });
   },
 
-  async startEnrollment(ownerName: string) {
+  async startEnrollment(ownerName: string, userId?: string) {
     const enrollment: CredentialEnrollment = {
       enabled: true,
       status: 'waiting_credential',
       ownerName,
+      userId: userId || null,
       uid: null,
       message: 'Waiting for credential read',
     };
@@ -62,6 +68,7 @@ export const credentialService = {
         enabled: false,
         status: 'error',
         ownerName: '',
+        userId: null,
         uid: null,
         message: 'Enrollment was not started',
       } satisfies CredentialEnrollment;
@@ -87,7 +94,11 @@ export const credentialService = {
     }
 
     try {
-      const credential = await credentialService.register(uid, enrollment.ownerName);
+      const credential = await credentialService.register(
+        uid,
+        enrollment.ownerName,
+        enrollment.userId || undefined
+      );
       const successEnrollment: CredentialEnrollment = {
         ...enrollment,
         enabled: false,
@@ -113,7 +124,7 @@ export const credentialService = {
     }
   },
 
-  async update(uid: string, data: { ownerName?: string; active?: boolean }) {
+  async update(uid: string, data: { ownerName?: string; active?: boolean; userId?: string }) {
     const credential = await CredentialModel.findOneAndUpdate({ uid }, data, { new: true });
     if (!credential) throw new Error('Credential not found');
     return credential;

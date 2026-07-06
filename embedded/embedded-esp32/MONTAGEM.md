@@ -8,19 +8,21 @@
 
 ## Mapeamento de pinos
 
-| GPIO | Componente       | Observacao          |
-|------|------------------|---------------------|
-| 2    | LED Verde        | LED onboard em alguns devkits |
-| 4    | LED Vermelho     |                     |
-| 5    | RC522 SDA (SS)   |                     |
-| 16   | Rele IN1         | Seguro, sem restricao de boot |
-| 17   | RC522 RST        |                     |
-| 18   | RC522 SCK        | SPI padrao (VSPI)   |
-| 19   | RC522 MISO       | SPI padrao (VSPI)   |
-| 23   | RC522 MOSI       | SPI padrao (VSPI)   |
-| 3.3V | RC522 VCC        | NUNCA 5V!           |
-| 5V/VIN | Rele VCC       |                     |
-| GND  | Todos GND        |                     |
+Use os nomes escritos na placa. Onde nao existe `D`, use apenas o numero do pino.
+
+| Pino na placa | No codigo | Componente       | Observacao          |
+|---------------|-----------|------------------|---------------------|
+| D2            | 2         | LED Verde        | LED onboard em alguns devkits |
+| D4            | 4         | LED Vermelho     |                     |
+| D5            | 5         | RC522 SDA (SS)   |                     |
+| D27           | 27        | Rele IN1         | Seguro, sem restricao de boot |
+| D22           | 22        | RC522 RST        | Pino digital para reset do RC522 |
+| D18           | 18        | RC522 SCK        | SPI padrao (VSPI)   |
+| D19           | 19        | RC522 MISO       | SPI padrao (VSPI)   |
+| D23           | 23        | RC522 MOSI       | SPI padrao (VSPI)   |
+| 3.3V          | -         | RC522 VCC        | NUNCA 5V!           |
+| 5V/VIN        | -         | Rele VCC         |                     |
+| GND           | -         | Todos GND        |                     |
 
 ---
 
@@ -33,22 +35,22 @@
 GND do ESP32   -->  trilha - (azul)
 ```
 
-### 2. LED Verde (GPIO 2)
+### 2. LED Verde (D2)
 
 ```
-GPIO2 ---[resistor 220R]--- perna longa (+) LED verde --- perna curta (-) --- GND
+D2 ---[resistor 220R]--- perna longa (+) LED verde --- perna curta (-) --- GND
 ```
 
-### 3. LED Vermelho (GPIO 4)
+### 3. LED Vermelho (D4)
 
 ```
-GPIO4 ---[resistor 220R]--- perna longa (+) LED vermelho --- perna curta (-) --- GND
+D4 ---[resistor 220R]--- perna longa (+) LED vermelho --- perna curta (-) --- GND
 ```
 
 ### 4. Modulo Rele (fora da protoboard, jumpers)
 
 ```
-GPIO16 -->  IN1
+D27    -->  IN1
 5V/VIN -->  VCC
 GND    -->  GND
 ```
@@ -56,11 +58,11 @@ GND    -->  GND
 ### 5. Modulo RFID RC522 (fora da protoboard, jumpers)
 
 ```
-GPIO5  -->  SDA
-GPIO18 -->  SCK
-GPIO19 -->  MISO
-GPIO23 -->  MOSI
-GPIO17 -->  RST
+D5     -->  SDA
+D18    -->  SCK
+D19    -->  MISO
+D23    -->  MOSI
+D22    -->  RST
 3.3V   -->  3.3V (NUNCA 5V!)
 GND    -->  GND
 IRQ    -->  (nao conectar)
@@ -75,14 +77,14 @@ IRQ    -->  (nao conectar)
            3.3V--| ESP32 DevKit     |--5V/VIN --> Rele VCC
             GND--|                  |--GND
                  |                  |
-  LED verde--G2--|                  |
-  LED verm.--G4--|                  |
-  RC522 SDA--G5--|                  |
-  Rele IN1--G16--|                  |
-  RC522 RST-G17--|                  |
-  RC522 SCK-G18--|                  |
-  RC522MISO-G19--|                  |
-  RC522MOSI-G23--|                  |
+  LED verde--D2--|                  |
+  LED verm.--D4--|                  |
+  RC522 SDA--D5--|                  |
+  Rele IN1-D27---|                  |
+  RC522 RST-D22--|                  |
+  RC522 SCK-D18--|                  |
+  RC522MISO-D19--|                  |
+  RC522MOSI-D23--|                  |
                  +------------------+
 ```
 
@@ -91,10 +93,10 @@ IRQ    -->  (nao conectar)
 ## Ordem de montagem recomendada
 
 1. ESP32 sozinho na protoboard (so alimentacao)
-2. LED Verde (GPIO 2)
-3. LED Vermelho (GPIO 4)
-4. Rele (GPIO 16, 5V, GND)
-5. RC522 (GPIO 5, 17, 18, 19, 23, 3.3V, GND)
+2. LED Verde (D2)
+3. LED Vermelho (D4)
+4. Rele (D27, 5V/VIN, GND)
+5. RC522 (D5, D22, D18, D19, D23, 3.3V, GND)
 
 ---
 

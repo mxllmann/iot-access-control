@@ -10,6 +10,7 @@ const CredentialSchema = new Schema<CredentialDocument>(
   {
     uid: { type: String, required: true, unique: true },
     ownerName: { type: String, required: true },
+    userId: { type: String, default: null, index: true },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }

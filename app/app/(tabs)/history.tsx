@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Pressable } from 'react-native';
-import { api, AccessLog } from '../../src/api';
+import { api, AccessLog, Credential } from '../../src/api';
+import { useAuth } from '../../src/auth';
 
 function formatTimestamp(iso: string) {
   const d = new Date(iso);
@@ -10,6 +11,9 @@ function formatTimestamp(iso: string) {
 }
 
 export default function HistoryTab() {
+  const auth = useAuth();
+  const isAdmin = auth.status === 'authenticated' && auth.user.role === 'admin';
+
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +22,23 @@ export default function HistoryTab() {
     try {
       setError(null);
       setLoading(true);
-      const data = await api.logs.getAll({ limit: 50 });
-      setLogs(data);
+
+      if (isAdmin) {
+        const data = await api.logs.getAll({ limit: 50 });
+        setLogs(data);
+      } else {
+        // User: fetch own credentials, then filter logs
+        const credentials = await api.credentials.getAll();
+        const uids = credentials.map((c: Credential) => c.uid);
+        const allLogs = await api.logs.getAll({ limit: 100 });
+        setLogs(allLogs.filter((l: AccessLog) => uids.includes(l.credentialUid)));
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => { fetchLogs(); }, []);
 
