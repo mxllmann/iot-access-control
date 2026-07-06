@@ -5,9 +5,9 @@
 #include <WiFiClientSecure.h>
 
 // ============ CONFIGURACAO ============
-const char* WIFI_SSID     = "SEU_WIFI";
-const char* WIFI_PASSWORD = "SUA_SENHA";
-const char* API_BASE      = "https://SEU_NGROK.ngrok-free.app/control";
+const char* WIFI_SSID     = "Wsforever";
+const char* WIFI_PASSWORD = "wsforever201";
+const char* API_BASE      = "https://ce79-179-181-81-14.ngrok-free.app/control";
 // ======================================
 
 // ============================================================
@@ -31,7 +31,6 @@ const char* API_BASE      = "https://SEU_NGROK.ngrok-free.app/control";
 #define RELAY     16
 #define RFID_SDA   5
 #define RFID_RST  17
-// SPI: SCK=18, MISO=19, MOSI=23 (padrao VSPI, automatico)
 
 MFRC522 rfid(RFID_SDA, RFID_RST);
 
@@ -68,7 +67,6 @@ void setup() {
   digitalWrite(LED_RED, LOW);
   digitalWrite(RELAY, LOW);
 
-  // Teste rapido dos LEDs e rele
   Serial.println("Testando LED verde...");
   digitalWrite(LED_GREEN, HIGH);
   delay(500);
@@ -87,6 +85,11 @@ void setup() {
   Serial.println("Componentes OK!\n");
 
   connectWiFi();
+
+  // Testa conexao com a API
+  if (WiFi.status() == WL_CONNECTED) {
+    testApiConnection();
+  }
 
   SPI.begin();
   rfid.PCD_Init();
@@ -126,57 +129,89 @@ bool ensureWiFi() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-int doPost(const String& url, const String& body) {
+// Helper GET
+int doGet(const String& url, String& response) {
   if (!ensureWiFi()) return -1;
 
   HTTPClient http;
-  if (String(API_BASE).startsWith("https")) {
-    WiFiClientSecure client;
-    client.setInsecure();
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    return http.POST(body);
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  http.begin(client, url);
+  int code = http.GET();
+  if (code > 0) {
+    response = http.getString();
   } else {
-    WiFiClient client;
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    return http.POST(body);
+    Serial.print("Erro HTTP GET: ");
+    Serial.println(http.errorToString(code));
+    response = "";
   }
+  http.end();
+  return code;
 }
 
-// Variaveis para manter resposta entre chamadas
-String lastResponse;
-HTTPClient globalHttp;
-
-int handleCard(const String& uid) {
-  if (!ensureWiFi()) return 0;
-
-  String url = String(API_BASE) + "/access";
-  String body = "{\"credentialUid\":\"" + uid + "\"}";
-  Serial.print("POST -> "); Serial.println(body);
+// Helper POST
+int doPost(const String& url, const String& body, String& response) {
+  if (!ensureWiFi()) return -1;
 
   HTTPClient http;
-  int code;
-  String resp;
+  WiFiClientSecure client;
+  client.setInsecure();
 
-  if (String(API_BASE).startsWith("https")) {
-    WiFiClientSecure client;
-    client.setInsecure();
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    code = http.POST(body);
-    if (code > 0) resp = http.getString();
-    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
-    http.end();
+  http.begin(client, url);
+  http.addHeader("Content-Type", "application/json");
+
+  int code = http.POST(body);
+  if (code > 0) {
+    response = http.getString();
   } else {
-    WiFiClient client;
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    code = http.POST(body);
-    if (code > 0) resp = http.getString();
-    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
-    http.end();
+    Serial.print("Erro HTTP POST: ");
+    Serial.println(http.errorToString(code));
+    response = "";
   }
+  http.end();
+  return code;
+}
+
+// Testa conexao com a API via GET /health
+bool testApiConnection() {
+  Serial.println("Testando conexao com a API...");
+  String url = String(API_BASE) + "/health";
+  String resp;
+  int code = doGet(url, resp);
+
+  if (code == 200) {
+    Serial.print("API OK: "); Serial.println(resp);
+    return true;
+  }
+
+  Serial.print("API FALHOU (code="); Serial.print(code); Serial.println(")");
+  if (resp.length() > 0) { Serial.print("Resp: "); Serial.println(resp); }
+  return false;
+}
+
+// Verifica se o modo enrollment esta ativo na API
+bool isEnrollmentActive() {
+  String url = String(API_BASE) + "/credentials/enrollment";
+  String resp;
+  int code = doGet(url, resp);
+
+  if (code <= 0) return false;
+
+  Serial.print("Enrollment state: "); Serial.println(resp);
+  return resp.indexOf("\"enabled\":true") >= 0
+      && resp.indexOf("\"status\":\"waiting_credential\"") >= 0;
+}
+
+// Verifica acesso: POST /control/access
+// Retorna: 0=erro, 1=autorizado, 2=negado
+int checkAccess(const String& uid) {
+  String url = String(API_BASE) + "/access";
+  String body = "{\"credentialUid\":\"" + uid + "\"}";
+  Serial.print("POST /access -> "); Serial.println(body);
+
+  String resp;
+  int code = doPost(url, body, resp);
 
   if (code <= 0) return 0;
 
@@ -185,37 +220,17 @@ int handleCard(const String& uid) {
   return 2;
 }
 
+// Enrollment: POST /control/credentials/enrollment/read
 bool enrollCard(const String& uid) {
-  if (!ensureWiFi()) return false;
-
   String url = String(API_BASE) + "/credentials/enrollment/read";
   String body = "{\"uid\":\"" + uid + "\"}";
   Serial.print("Enrollment -> "); Serial.println(body);
 
-  HTTPClient http;
-  int code;
   String resp;
-
-  if (String(API_BASE).startsWith("https")) {
-    WiFiClientSecure client;
-    client.setInsecure();
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    code = http.POST(body);
-    if (code > 0) resp = http.getString();
-    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
-    http.end();
-  } else {
-    WiFiClient client;
-    http.begin(client, url);
-    http.addHeader("Content-Type", "application/json");
-    code = http.POST(body);
-    if (code > 0) resp = http.getString();
-    else { Serial.print("Erro: "); Serial.println(http.errorToString(code)); }
-    http.end();
-  }
+  int code = doPost(url, body, resp);
 
   if (code <= 0) return false;
+
   Serial.print("Resposta ("); Serial.print(code); Serial.print("): "); Serial.println(resp);
   return resp.indexOf("\"status\":\"success\"") >= 0;
 }
@@ -267,19 +282,23 @@ void loop() {
   Serial.print("UID: ");
   Serial.println(uid);
 
-  int result = handleCard(uid);
-
-  if (result == 1) {
-    accessGranted();
-  } else if (result == 2) {
-    // Acesso negado — tenta enrollment
+  // Consulta a API para saber o modo atual
+  if (isEnrollmentActive()) {
+    // Modo enrollment — cadastra o cartao
+    Serial.println("Modo ENROLLMENT ativo");
     if (enrollCard(uid)) {
       enrollmentSuccess();
     } else {
-      accessDenied();
+      enrollmentFailed();
     }
   } else {
-    accessDenied();
+    // Modo normal — verifica acesso
+    int result = checkAccess(uid);
+    if (result == 1) {
+      accessGranted();
+    } else {
+      accessDenied();
+    }
   }
 
   Serial.println("Aproxime outro cartao...\n");
